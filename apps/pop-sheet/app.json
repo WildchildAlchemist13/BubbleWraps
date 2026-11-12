@@ -21,7 +21,13 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.wildchildalchemist.popsheet"
+      "package": "com.wildchildalchemist.popsheet",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,6 +51,12 @@
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#5B4BE0"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "255cc912-dc1b-4896-8b02-c9688c83d04e"
+      }
+    },
+    "owner": "revanthsharma"
   }
 }

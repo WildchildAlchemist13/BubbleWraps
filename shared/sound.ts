@@ -12,7 +12,9 @@ export function useSoundPool(sources: AudioSource[], voices = 6) {
   const muted = useRef(false);
 
   useEffect(() => {
-    setAudioModeAsync({ playsInSilentMode: false }).catch(() => {});
+    // The app's own "Sound on/off" decides, so play even when the iPhone is on silent,
+    // and mix with whatever music is already playing instead of stopping it.
+    setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' }).catch(() => {});
     players.current = sources.map((src) => Array.from({ length: voices }, () => createAudioPlayer(src)));
     cursor.current = sources.map(() => 0);
     return () => {
@@ -32,8 +34,14 @@ export function useSoundPool(sources: AudioSource[], voices = 6) {
         const p = voicesFor[cursor.current[v]];
         cursor.current[v] = (cursor.current[v] + 1) % voicesFor.length;
         try {
-          p.seekTo(0);
-          p.play();
+          // a player that has played before sits at its end: rewind first, THEN play
+          if (p.currentTime > 0 || p.playing) {
+            p.seekTo(0)
+              .then(() => p.play())
+              .catch(() => {});
+          } else {
+            p.play();
+          }
         } catch {}
       },
       setMuted(m: boolean) {

@@ -42,3 +42,4 @@ yarn-error.*
 
 # real keys stay local
 .env
+apps/pop-sheet/asc-api-key.p8

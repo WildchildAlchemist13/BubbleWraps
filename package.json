@@ -1,0 +1,5 @@
+{
+  "name": "pocket-apps",
+  "private": true,
+  "workspaces": ["apps/*", "shared"]
+}

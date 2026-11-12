@@ -12,6 +12,7 @@ type Props = {
   onChange: (patch: Partial<Stats>) => void;
   onReset: () => void;
   reduce: boolean;
+  removeAds: { show: boolean; owned: boolean; price: string | null; buy: () => void; restore: () => void };
 };
 
 function confirmReset(onReset: () => void) {
@@ -27,7 +28,7 @@ function confirmReset(onReset: () => void) {
   ]);
 }
 
-export function StatsSheet({ visible, stats, onClose, onChange, onReset, reduce }: Props) {
+export function StatsSheet({ visible, stats, onClose, onChange, onReset, reduce, removeAds }: Props) {
   const insets = useSafeAreaInsets();
   const week = lastWeek(stats);
   const max = Math.max(1, ...week.map((d) => d.value));
@@ -128,6 +129,30 @@ export function StatsSheet({ visible, stats, onClose, onChange, onReset, reduce 
               ))}
             </View>
 
+            {removeAds.show && (
+              <View style={styles.list}>
+                {removeAds.owned ? (
+                  <View style={styles.row} accessible accessibilityLabel="Ads removed">
+                    <Text style={[styles.rowLabel, { flex: 1 }]}>Ads removed</Text>
+                    <Text style={styles.owned}>Thanks!</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Pressable onPress={removeAds.buy} style={[styles.row, styles.rowLine]} accessibilityRole="button">
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.rowLabel}>Remove ads</Text>
+                        <Text style={styles.rowHint}>One-time purchase. Pop without breaks.</Text>
+                      </View>
+                      <Text style={styles.priceTag}>{removeAds.price ?? 'Buy'}</Text>
+                    </Pressable>
+                    <Pressable onPress={removeAds.restore} style={styles.row} accessibilityRole="button">
+                      <Text style={[styles.rowLabel, { flex: 1, color: C.ground }]}>Restore purchase</Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            )}
+
             <Pressable
               onPress={() => confirmReset(onReset)}
               style={styles.reset}
@@ -184,5 +209,16 @@ const styles = StyleSheet.create({
   rowLabel: { fontFamily: F.xbold, fontSize: 16, color: C.ink },
   rowHint: { fontFamily: F.bold, fontSize: 13, color: C.inkSoft },
   reset: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
+  owned: { fontFamily: F.xbold, fontSize: 15, color: C.ground },
+  priceTag: {
+    fontFamily: F.black,
+    fontSize: 15,
+    color: '#FFFFFF',
+    backgroundColor: C.ground,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
   resetText: { fontFamily: F.xbold, fontSize: 15, color: C.danger },
 });

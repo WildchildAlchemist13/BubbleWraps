@@ -11,6 +11,12 @@ export type Stats = {
   /** one-time moments already shown: 'hint', 'tough', milestone keys */
   seen: Record<string, boolean>;
   lastOpen: string;
+  // ads
+  firstOpen: string; // first day the app was opened (day one is ad-free)
+  sheetsSinceAd: number;
+  lastAdAt: number;
+  adsSeen: number;
+  adFree: boolean; // bought "Remove ads"
   // v1 fields, migrated into `days` on load
   day?: string;
   today?: number;
@@ -25,6 +31,11 @@ export const INITIAL: Stats = {
   tilt: true,
   seen: {},
   lastOpen: '',
+  firstOpen: '',
+  sheetsSinceAd: 0,
+  lastAdAt: 0,
+  adsSeen: 0,
+  adFree: false,
 };
 
 export function migrate(s: Stats): Stats {

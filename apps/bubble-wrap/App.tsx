@@ -1,6 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
-import { Pressable, StyleSheet, Text, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -33,6 +42,29 @@ import { StatsSheet } from './src/StatsSheet';
 import { useTilt } from './src/useTilt';
 import { C, F } from './src/theme';
 import { INITIAL, migrate, milestoneAfterPop, popsToday, recordPop, type Stats } from './src/stats';
+import { monetize } from './src/monetize';
+import { shouldShowAd } from './src/adRules';
+
+/** Two-button question that also works on web. Resolves true for the OK button. */
+function ask(title: string, body: string, ok: string, cancel: string): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return Promise.resolve(typeof window !== 'undefined' && window.confirm(`${title}\n\n${body}`));
+  }
+  return new Promise((resolve) =>
+    Alert.alert(title, body, [
+      { text: cancel, style: 'cancel', onPress: () => resolve(false) },
+      { text: ok, onPress: () => resolve(true) },
+    ]),
+  );
+}
+
+function tell(title: string, body: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(`${title}\n\n${body}`);
+    return;
+  }
+  Alert.alert(title, body);
+}
 
 const STUBBORN_CHANCE = 0.06; // some bubbles need two presses, like the real thing
 
@@ -149,9 +181,54 @@ function BubbleWrap() {
     const s = migrate(statsRef.current);
     const d = todayKey();
     const returning = s.lastOpen !== '' && s.lastOpen !== d && !s.seen[`back:${d}`];
-    setStats({ ...s, lastOpen: d });
+    setStats({ ...s, lastOpen: d, firstOpen: s.firstOpen || d });
     if (returning) setTimeout(() => showToast(`back:${d}`, 'Back for more. Same.'), 600);
+    // ads + store: consent, preload an ad, check whether "Remove ads" is owned
+    monetize
+      .init()
+      .then(async () => {
+        const owned = await monetize.removeAds.isOwned();
+        if (owned !== null && owned !== statsRef.current.adFree) patch({ adFree: owned });
+        setRemoveAdsPrice(await monetize.removeAds.price());
+      })
+      .catch(() => {});
   }, [ready]);
+
+  const [removeAdsPrice, setRemoveAdsPrice] = useState<string | null>(null);
+  const buyRemoveAds = async () => {
+    haptic.tap();
+    const result = await monetize.removeAds.buy();
+    if (result === 'bought') {
+      patch({ adFree: true });
+      haptic.success();
+      tell('Ads removed', 'Thanks for supporting Bubble Wrap. Pop in peace.');
+    } else if (result === 'unavailable') {
+      if (__DEV__) {
+        // purchases aren't set up yet: let the developer feel the ad-free version
+        const pretend = await ask(
+          'Store not set up yet',
+          'Purchases need a RevenueCat key and a store build. Test mode: pretend the purchase went through?',
+          'Pretend I bought it',
+          'Cancel',
+        );
+        if (pretend) patch({ adFree: true });
+      } else {
+        tell("Couldn't reach the store", 'Check your connection and try again in a moment.');
+      }
+    }
+  };
+  const restoreRemoveAds = async () => {
+    haptic.tap();
+    const owned = await monetize.removeAds.restore();
+    if (owned) {
+      patch({ adFree: true });
+      tell('Purchase restored', 'Ads are off again. Welcome back.');
+    } else if (owned === false) {
+      tell('Nothing to restore', "We couldn't find a Remove ads purchase on this account.");
+    } else {
+      tell("Couldn't reach the store", 'Check your connection and try again in a moment.');
+    }
+  };
 
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const grid = useMemo(() => (size ? buildGrid(size.w, size.h) : null), [size]);
@@ -208,6 +285,7 @@ function BubbleWrap() {
 
     const done = remaining.current === 0;
     let next = recordPop(statsRef.current, done);
+    if (done) next = { ...next, sheetsSinceAd: next.sheetsSinceAd + 1 };
     if (!next.seen.hint) next = { ...next, seen: { ...next.seen, hint: true } };
     setStats(next);
     const m = milestoneAfterPop(next);
@@ -245,10 +323,34 @@ function BubbleWrap() {
   }));
   const swapSheet = () => setSheetId((n) => n + 1);
   const unlock = () => (busy.current = false);
-  const newSheet = () => {
+  const newSheet = async () => {
     if (busy.current || !size) return;
     busy.current = true;
     haptic.medium();
+    // the ad break: only after a cleared sheet, and only when the rules allow it
+    const st = statsRef.current;
+    if (
+      cleared &&
+      monetize.adsAvailable &&
+      shouldShowAd({
+        adFree: st.adFree,
+        firstOpen: st.firstOpen,
+        today: todayKey(),
+        sheetsSinceAd: st.sheetsSinceAd,
+        lastAdAt: st.lastAdAt,
+        now: Date.now(),
+      })
+    ) {
+      const shown = await monetize.showInterstitial();
+      if (shown) {
+        const now = statsRef.current;
+        setStats({ ...now, sheetsSinceAd: 0, lastAdAt: Date.now(), adsSeen: now.adsSeen + 1 });
+      }
+    }
+    playNewSheet();
+  };
+  const playNewSheet = () => {
+    if (!size) return;
     if (reduce) {
       fade.value = withSequence(
         withTiming(0, { duration: 150 }, (ok) => {
@@ -390,13 +492,21 @@ function BubbleWrap() {
             </View>
             {ready && !stats.seen.hint && today === 0 && !cleared && <Hint reduce={reduce} />}
             {cleared && (
-              <View pointerEvents="none" style={styles.centerWrap}>
+              <View pointerEvents="box-none" style={styles.centerWrap}>
                 <Animated.View
+                  pointerEvents="none"
                   entering={reduce ? FadeIn : ZoomIn.springify().damping(10)}
                   style={[styles.pill, styles.badge]}
                 >
                   <Text style={styles.badgeText}>Every last one.</Text>
                 </Animated.View>
+                {stats.adsSeen > 0 && !stats.adFree && (monetize.storeAvailable || __DEV__) && (
+                  <Animated.View entering={FadeIn.delay(400)}>
+                    <Pressable onPress={buyRemoveAds} style={styles.removeAds} accessibilityRole="button" hitSlop={8}>
+                      <Text style={styles.removeAdsText}>Remove ads{removeAdsPrice ? ` · ${removeAdsPrice}` : ''}</Text>
+                    </Pressable>
+                  </Animated.View>
+                )}
               </View>
             )}
           </Animated.View>
@@ -422,6 +532,13 @@ function BubbleWrap() {
         reduce={reduce}
         onClose={() => setStatsOpen(false)}
         onChange={(p) => patch(p)}
+        removeAds={{
+          show: monetize.storeAvailable || __DEV__,
+          owned: stats.adFree,
+          price: removeAdsPrice,
+          buy: buyRemoveAds,
+          restore: restoreRemoveAds,
+        }}
         onReset={() => {
           haptic.medium();
           setStats({ ...statsRef.current, days: {}, total: 0, sheets: 0 });
@@ -548,4 +665,13 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   buttonText: { fontFamily: F.black, color: C.ground, fontSize: 18 },
+  removeAds: {
+    marginTop: 14,
+    minHeight: 44,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(27,19,64,0.55)',
+  },
+  removeAdsText: { fontFamily: F.xbold, color: '#FFFFFF', fontSize: 15 },
 });

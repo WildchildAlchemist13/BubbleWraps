@@ -1,4 +1,4 @@
-// Shared design tokens for every Pocket App.
+// Shared design tokens for every Wildchild App.
 export const colors = {
   ink: '#1B1B2F',
   inkSoft: '#5B5B76',

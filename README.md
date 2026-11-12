@@ -1,10 +1,10 @@
-# Pocket Apps
+# Wildchild Apps
 
 Nine small mobile apps built on one shared kit (Expo + React Native + TypeScript).
 
 ```
-pocket-apps/
-  shared/            @pocket/kit: theme, haptics, sound pool, saved state, PillButton
+BubbleWraps/
+  shared/            @wildchild/kit: theme, haptics, sound pool, saved state, PillButton
   apps/bubble-wrap/  App 1: Bubble Wrap
 ```
 
@@ -68,4 +68,4 @@ testing, temporarily set `graceDays`/`sheetsBetweenAds` lower in `src/adRules.ts
 2. RevenueCat: create a project, a non-consumable product `bubblewrap_remove_ads` in App Store Connect and
    Google Play, and an entitlement `remove_ads` that includes it. Put the public SDK keys in `.env`.
 3. Change `ios.bundleIdentifier` / `android.package` in `app.json` if you want your own (currently
-   `com.pocketapps.bubblewrap`).
+   `com.wildchildalchemist.bubblewrap`).

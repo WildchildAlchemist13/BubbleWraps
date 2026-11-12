@@ -1,4 +1,4 @@
-import { todayKey } from '@pocket/kit';
+import { todayKey } from '@wildchild/kit';
 
 export type Stats = {
   /** pops per local day, YYYY-MM-DD → count (last ~60 days kept) */

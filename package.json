@@ -1,5 +1,5 @@
 {
-  "name": "pocket-apps",
+  "name": "wildchild-apps",
   "private": true,
   "workspaces": ["apps/*", "shared"]
 }

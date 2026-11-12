@@ -1,7 +1,7 @@
 import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { haptic } from '@pocket/kit';
+import { haptic } from '@wildchild/kit';
 import { C, F } from './theme';
 import { bestDay, lastWeek, popsToday, type Stats } from './stats';
 

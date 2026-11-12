@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.pocketapps.bubblewrap"
+      "bundleIdentifier": "com.wildchildalchemist.bubblewrap"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.pocketapps.bubblewrap"
+      "package": "com.wildchildalchemist.bubblewrap"
     },
     "web": {
       "favicon": "./assets/favicon.png"

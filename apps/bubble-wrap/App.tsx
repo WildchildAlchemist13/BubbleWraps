@@ -36,7 +36,7 @@ import {
   Nunito_800ExtraBold,
   Nunito_900Black,
 } from '@expo-google-fonts/nunito';
-import { haptic, todayKey, useSoundPool, useStoredState } from '@pocket/kit';
+import { haptic, todayKey, useSoundPool, useStoredState } from '@wildchild/kit';
 import { Bubble, type BubbleState } from './src/Bubble';
 import { StatsSheet } from './src/StatsSheet';
 import { useTilt } from './src/useTilt';

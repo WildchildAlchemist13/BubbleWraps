@@ -24,10 +24,15 @@ pocket-apps/
 
 ## Bubble Wrap: what's in it
 
-- Hex-packed sheet of bubbles that fills any screen size.
-- Tap to pop, or drag a finger across to pop a whole row. Multi-finger works.
-- About 6% of bubbles are "stubborn": the first press squishes them, the second pops them.
-- Every pop has a random sound (4 variants) plus a haptic; drag pops use a lighter haptic.
-- Counters for today, all time and sheets cleared, saved on the phone.
-- Clear a sheet to get "Sheet cleared!" and a pulsing "Grab a fresh sheet" that slides in a new one.
-- Sound on/off toggle (also saved). Pops follow the phone's silent switch.
+Design canvas: screens, style guide and motion spec live in the "Bubble Wrap — App Design" artifact.
+
+- Hex-packed sheet of bubbles that fills any screen size. Tap to pop, or drag a finger across a row. Multi-finger works.
+- About 6% of bubbles are "stubborn": the first press squashes them (110% x 80%, wobble), the second pops them. "Tough one." shows the first time.
+- Every pop: swell to 112%, spring flat, a ring bursts outward; random sound (4 variants) and a haptic (medium/rigid on taps, light on drags).
+- **Tilt shine**: bubble highlights slide toward the light as you tilt (gravity sensor, pitch/roll; level = how you hold it at launch, re-levels over ~10 s, 3 degree dead zone).
+- First launch hint: "Tap to pop. Or drag across a row."
+- Clear a sheet: "Every last one." and a pulsing "Another sheet". New sheets drop in and land with a small squash.
+- Milestones (max one per session): 100 today, 1,000 all time, 10 sheets, coming back the next day.
+- Stats sheet (tap the "all time" line): today, all time, sheets cleared, best day, this week's chart; Sound, Vibration and Tilt shine toggles; Reset counts with confirmation.
+- Respects Reduce Motion: no bounces or pulses, quick fades, tilt off; haptics stay.
+- Font: Nunito. Ground colour #5B4BE0 (white text 5.6:1).

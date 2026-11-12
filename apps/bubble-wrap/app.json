@@ -22,13 +22,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-audio"
+      "expo-audio",
+      "expo-font"
     ],
-    "backgroundColor": "#7B6CF6",
+    "backgroundColor": "#5B4BE0",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#7B6CF6"
+      "backgroundColor": "#5B4BE0"
     }
   }
 }

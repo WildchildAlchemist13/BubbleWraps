@@ -1,11 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
-import { memo, type ComponentRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   Easing,
+  FadeIn,
+  FadeOut,
+  FadeInUp,
+  FadeOutUp,
+  ZoomIn,
   interpolate,
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -14,14 +20,23 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PillButton, haptic, todayKey, useSoundPool, useStoredState } from '@pocket/kit';
+import {
+  useFonts,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  Nunito_900Black,
+} from '@expo-google-fonts/nunito';
+import { haptic, todayKey, useSoundPool, useStoredState } from '@pocket/kit';
+import { Bubble, type BubbleState } from './src/Bubble';
+import { StatsSheet } from './src/StatsSheet';
+import { useTilt } from './src/useTilt';
+import { C, F } from './src/theme';
+import { INITIAL, migrate, milestoneAfterPop, popsToday, recordPop, type Stats } from './src/stats';
 
-const BG = '#7B6CF6';
 const STUBBORN_CHANCE = 0.06; // some bubbles need two presses, like the real thing
 
 type Cell = { x: number; y: number };
-type BubbleState = 0 | 1 | 2; // 0 intact, 1 squished (stubborn, needs another press), 2 popped
-
 type Grid = { cells: Cell[]; D: number; size: number; rowH: number; cols: number; rows: number; offY: number };
 
 /** Hex-packed grid that fills the sheet exactly, edge to edge. */
@@ -54,128 +69,51 @@ function hitTest(g: Grid, x: number, y: number): number {
   return -1;
 }
 
-const Bubble = memo(function Bubble({ x, y, size, state }: Cell & { size: number; state: BubbleState }) {
-  const scale = useSharedValue(1);
-  const popped = useSharedValue(0);
-  const ring = useSharedValue(0);
-  const prev = useRef<BubbleState>(state);
-
-  useEffect(() => {
-    if (state === prev.current) return;
-    prev.current = state;
-    if (state === 1) {
-      scale.value = withSequence(withTiming(0.84, { duration: 70 }), withSpring(1, { damping: 4, stiffness: 260 }));
-    } else if (state === 2) {
-      scale.value = withSequence(withTiming(1.12, { duration: 55 }), withSpring(0.86, { damping: 9, stiffness: 320 }));
-      popped.value = withTiming(1, { duration: 110 });
-      ring.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.quad) });
-    }
-  }, [state]);
-
-  const body = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const intact = useAnimatedStyle(() => ({ opacity: 1 - popped.value }));
-  const flat = useAnimatedStyle(() => ({ opacity: popped.value }));
-  const burst = useAnimatedStyle(() => ({
-    opacity: ring.value === 0 ? 0 : interpolate(ring.value, [0, 1], [0.9, 0]),
-    transform: [{ scale: interpolate(ring.value, [0, 1], [0.7, 1.7]) }],
-  }));
-
-  // each popped bubble crinkles a little differently
-  const crinkles = useMemo(() => {
-    let seed = Math.floor(x * 7919 + y * 104729) % 2147483647;
-    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    return Array.from({ length: 4 }, () => ({
-      len: 0.18 + rnd() * 0.26,
-      deg: rnd() * 180,
-      dx: (rnd() - 0.5) * 0.3,
-      dy: (rnd() - 0.5) * 0.36,
-      o: 0.35 + rnd() * 0.35,
-    }));
-  }, [x, y]);
-
-  const round = { width: size, height: size, borderRadius: size / 2 };
-  return (
-    <View pointerEvents="none" style={[styles.cell, round, { left: x - size / 2, top: y - size / 2 }]}>
-      <Animated.View style={[StyleSheet.absoluteFill, round, styles.ring, burst]} />
-      <Animated.View style={[StyleSheet.absoluteFill, body]}>
-        {/* intact bubble: clear plastic dome with a shine */}
-        <Animated.View style={[StyleSheet.absoluteFill, round, styles.dome, intact]}>
-          <View
-            style={[
-              styles.shade,
-              {
-                width: size * 0.8,
-                height: size * 0.8,
-                borderRadius: size * 0.4,
-                right: size * 0.03,
-                bottom: size * 0.03,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.shine,
-              {
-                width: size * 0.36,
-                height: size * 0.18,
-                borderRadius: size * 0.1,
-                left: size * 0.17,
-                top: size * 0.17,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.shine,
-              {
-                width: size * 0.09,
-                height: size * 0.09,
-                borderRadius: size,
-                left: size * 0.58,
-                top: size * 0.14,
-                opacity: 0.8,
-              },
-            ]}
-          />
-        </Animated.View>
-        {/* popped bubble: flat, crinkled plastic */}
-        <Animated.View style={[StyleSheet.absoluteFill, round, styles.flat, flat]}>
-          {crinkles.map((c, k) => (
-            <View
-              key={k}
-              style={[
-                styles.crinkle,
-                {
-                  width: size * c.len,
-                  left: size * (0.5 - c.len / 2 + c.dx),
-                  top: size * (0.5 + c.dy),
-                  opacity: c.o,
-                  transform: [{ rotate: `${c.deg}deg` }],
-                },
-              ]}
-            />
-          ))}
-        </Animated.View>
-      </Animated.View>
-    </View>
-  );
-});
-
-type Stats = { day: string; today: number; total: number; sheets: number; muted: boolean };
-const INITIAL: Stats = { day: '', today: 0, total: 0, sheets: 0, muted: false };
-
-function Counter({ value }: { value: number }) {
+function Counter({ value, reduce }: { value: number; reduce: boolean }) {
   const bump = useSharedValue(1);
   useEffect(() => {
-    bump.value = withSequence(withTiming(1.12, { duration: 60 }), withSpring(1, { damping: 8, stiffness: 300 }));
+    if (reduce || value === 0) return;
+    bump.value = withSequence(withTiming(1.12, { duration: 70 }), withTiming(1, { duration: 150 }));
   }, [value]);
   const s = useAnimatedStyle(() => ({ transform: [{ scale: bump.value }] }));
-  return <Animated.Text style={[styles.count, s]}>{value.toLocaleString()}</Animated.Text>;
+  return (
+    <Animated.Text style={[styles.count, s]} accessibilityLabel={`Popped today, ${value}`}>
+      {value.toLocaleString()}
+    </Animated.Text>
+  );
+}
+
+/** "Tap to pop" hint: bobs gently until the first pop. */
+function Hint({ reduce }: { reduce: boolean }) {
+  const bob = useSharedValue(0);
+  useEffect(() => {
+    if (!reduce) bob.value = withRepeat(withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.sin) }), -1, true);
+  }, [reduce]);
+  const s = useAnimatedStyle(() => ({ transform: [{ translateY: -5 * bob.value }] }));
+  return (
+    <Animated.View pointerEvents="none" exiting={FadeOut.duration(200)} style={styles.centerWrap}>
+      <Animated.View style={[styles.pill, styles.hintPill, s]}>
+        <Text style={styles.hintText}>Tap to pop. Or drag across a row.</Text>
+      </Animated.View>
+    </Animated.View>
+  );
 }
 
 function BubbleWrap() {
   const insets = useSafeAreaInsets();
-  const [stats, setStats] = useStoredState<Stats>('bubble:stats', INITIAL);
+  const reduce = useReducedMotion();
+  const [stats, setStatsRaw, ready] = useStoredState<Stats>('bubble:stats', INITIAL);
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
+  const setStats = useCallback(
+    (next: Stats) => {
+      statsRef.current = next;
+      setStatsRaw(next);
+    },
+    [setStatsRaw],
+  );
+  const patch = (p: Partial<Stats>) => setStats({ ...statsRef.current, ...p });
+
   const pops = useSoundPool([
     require('./assets/sounds/pop1.wav'),
     require('./assets/sounds/pop2.wav'),
@@ -188,6 +126,32 @@ function BubbleWrap() {
     pops.setMuted(stats.muted);
     squish.setMuted(stats.muted);
   }, [stats.muted]);
+  useEffect(() => haptic.setEnabled(stats.haptics), [stats.haptics]);
+
+  const tilt = useTilt(stats.tilt && !reduce);
+
+  // toasts: at most one per session
+  const [toast, setToast] = useState<string | null>(null);
+  const toastShown = useRef(false);
+  const showToast = (key: string, text: string) => {
+    if (toastShown.current) return;
+    toastShown.current = true;
+    setToast(text);
+    setStats({ ...statsRef.current, seen: { ...statsRef.current.seen, [key]: true } });
+    setTimeout(() => setToast(null), 2600);
+  };
+
+  // on open: migrate old data, greet a returning popper
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!ready || opened.current) return;
+    opened.current = true;
+    const s = migrate(statsRef.current);
+    const d = todayKey();
+    const returning = s.lastOpen !== '' && s.lastOpen !== d && !s.seen[`back:${d}`];
+    setStats({ ...s, lastOpen: d });
+    if (returning) setTimeout(() => showToast(`back:${d}`, 'Back for more. Same.'), 600);
+  }, [ready]);
 
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const grid = useMemo(() => (size ? buildGrid(size.w, size.h) : null), [size]);
@@ -198,9 +162,11 @@ function BubbleWrap() {
   const remaining = useRef(0);
   const [, setTick] = useState(0);
   const [cleared, setCleared] = useState(false);
+  const [tough, setTough] = useState<Cell | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
   const busy = useRef(false);
+  const tapCount = useRef(0);
 
-  // new sheet whenever the grid or sheet changes
   useEffect(() => {
     if (!grid) return;
     states.current = grid.cells.map(() => 0);
@@ -218,45 +184,43 @@ function BubbleWrap() {
     requestAnimationFrame(() => sheetRef.current?.measureInWindow((x, y) => (origin.current = { x, y })));
   };
 
-  const press = useCallback(
-    (i: number, dragging: boolean) => {
-      const s = states.current[i];
-      if (s === 2) return;
-      if (s === 0 && stubborn.current.has(i)) {
-        states.current[i] = 1;
-        squish.play();
-        haptic.light();
-        setTick((t) => t + 1);
-        return;
-      }
-      states.current[i] = 2;
-      remaining.current -= 1;
-      pops.play();
-      if (dragging) haptic.light();
-      else (Math.random() < 0.5 ? haptic.medium : haptic.rigid)();
+  const press = (i: number, dragging: boolean) => {
+    const s = states.current[i];
+    if (s === 2) return;
+    if (s === 0 && stubborn.current.has(i)) {
+      states.current[i] = 1;
+      squish.play();
+      haptic.light();
       setTick((t) => t + 1);
-      setStats((p) => {
-        const d = todayKey();
-        const done = remaining.current === 0;
-        return {
-          ...p,
-          day: d,
-          today: (p.day === d ? p.today : 0) + 1,
-          total: p.total + 1,
-          sheets: p.sheets + (done ? 1 : 0),
-        };
-      });
-      if (remaining.current === 0) {
-        setTimeout(() => {
-          haptic.success();
-          setCleared(true);
-        }, 250);
+      if (!statsRef.current.seen.tough && grid) {
+        setTough(grid.cells[i]);
+        setStats({ ...statsRef.current, seen: { ...statsRef.current.seen, tough: true } });
+        setTimeout(() => setTough(null), 1400);
       }
-    },
-    [pops, squish, setStats],
-  );
+      return;
+    }
+    states.current[i] = 2;
+    remaining.current -= 1;
+    pops.play();
+    if (dragging) haptic.light();
+    else (tapCount.current++ % 2 ? haptic.rigid : haptic.medium)();
+    setTick((t) => t + 1);
 
-  // which bubble each finger is currently on, so holding still doesn't re-trigger
+    const done = remaining.current === 0;
+    let next = recordPop(statsRef.current, done);
+    if (!next.seen.hint) next = { ...next, seen: { ...next.seen, hint: true } };
+    setStats(next);
+    const m = milestoneAfterPop(next);
+    if (m) showToast(m.key, m.text);
+    if (done) {
+      setTimeout(() => {
+        haptic.success();
+        setCleared(true);
+      }, 250);
+    }
+  };
+
+  // which bubble each finger is on, so holding still doesn't re-trigger
   const fingerOn = useRef<Record<string, number>>({});
   const handleTouches = (e: GestureResponderEvent, dragging: boolean) => {
     if (!grid || busy.current) return;
@@ -271,67 +235,112 @@ function BubbleWrap() {
     }
   };
 
-  // slide the old sheet away and a fresh one in
+  // new sheet: the old one drops away, the new one falls in and lands with a little squash
   const slide = useSharedValue(0);
+  const fade = useSharedValue(1);
+  const land = useSharedValue(1);
   const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: slide.value }],
-    opacity: interpolate(Math.abs(slide.value), [0, 400], [1, 0.4]),
+    opacity: fade.value,
+    transform: [{ translateY: slide.value }, { scaleX: 2 - land.value }, { scaleY: land.value }],
   }));
   const swapSheet = () => setSheetId((n) => n + 1);
-  const freshSheet = () => {
+  const unlock = () => (busy.current = false);
+  const newSheet = () => {
     if (busy.current || !size) return;
     busy.current = true;
     haptic.medium();
-    slide.value = withSequence(
-      withTiming(size.h + 200, { duration: 260, easing: Easing.in(Easing.cubic) }, (ok) => {
-        if (ok) runOnJS(swapSheet)();
-      }),
-      withTiming(-(size.h + 200), { duration: 0 }),
-      withDelay(
-        40,
-        withSpring(0, { damping: 16, stiffness: 140 }, (ok) => {
+    if (reduce) {
+      fade.value = withSequence(
+        withTiming(0, { duration: 150 }, (ok) => {
+          if (ok) runOnJS(swapSheet)();
+        }),
+        withTiming(1, { duration: 150 }, (ok) => {
           if (ok) runOnJS(unlock)();
         }),
-      ),
+      );
+      return;
+    }
+    const H = size.h + 200;
+    slide.value = withSequence(
+      withTiming(H, { duration: 260, easing: Easing.in(Easing.cubic) }, (ok) => {
+        if (ok) runOnJS(swapSheet)();
+      }),
+      withTiming(-H, { duration: 0 }),
+      withSpring(0, { damping: 16, stiffness: 140 }, (ok) => {
+        if (ok) runOnJS(unlock)();
+      }),
+    );
+    land.value = withDelay(
+      560,
+      withSequence(withTiming(0.97, { duration: 70 }), withSpring(1, { damping: 8, stiffness: 300 })),
     );
   };
-  const unlock = () => (busy.current = false);
 
-  // nudge the button when the sheet is done
-  const pulse = useSharedValue(1);
+  // the button pulses once the sheet is done
+  const pulse = useSharedValue(0);
   useEffect(() => {
-    pulse.value = cleared
-      ? withRepeat(withSequence(withTiming(1.06, { duration: 420 }), withTiming(1, { duration: 420 })), -1)
-      : withTiming(1);
-  }, [cleared]);
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+    pulse.value =
+      cleared && !reduce
+        ? withRepeat(withTiming(1, { duration: 550, easing: Easing.inOut(Easing.sin) }), -1, true)
+        : withTiming(0);
+  }, [cleared, reduce]);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + pulse.value * 0.04 }] }));
+  const haloStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(pulse.value, [0, 1], [0.55, 0]),
+    transform: [{ scaleX: 1 + pulse.value * 0.05 }, { scaleY: 1 + pulse.value * 0.25 }],
+  }));
 
-  const today = stats.day === todayKey() ? stats.today : 0;
+  const today = popsToday(stats);
+  const left = grid ? remaining.current : 0;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}>
       <StatusBar style="light" />
+      {toast && (
+        <Animated.View
+          entering={reduce ? FadeIn : FadeInUp.springify().damping(14)}
+          exiting={reduce ? FadeOut : FadeOutUp}
+          style={[styles.toast, { top: insets.top + 4 }]}
+          accessibilityLiveRegion="polite"
+        >
+          <Text style={styles.toastStar}>★</Text>
+          <Text style={styles.toastText}>{toast}</Text>
+        </Animated.View>
+      )}
+
       <View style={styles.header}>
         <View>
           <Text style={styles.kicker}>POPPED TODAY</Text>
-          <Counter value={today} />
+          <Counter value={today} reduce={reduce} />
         </View>
         <Pressable
-          hitSlop={12}
+          hitSlop={8}
           onPress={() => {
             haptic.tap();
-            setStats((p) => ({ ...p, muted: !p.muted }));
+            patch({ muted: !stats.muted });
           }}
-          style={styles.mute}
-          accessibilityRole="button"
-          accessibilityLabel={stats.muted ? 'Turn sound on' : 'Turn sound off'}
+          style={styles.chip}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: !stats.muted }}
+          accessibilityLabel="Sound"
         >
-          <Text style={styles.muteText}>{stats.muted ? 'Sound off' : 'Sound on'}</Text>
+          <Text style={styles.chipText}>{stats.muted ? 'Sound off' : 'Sound on'}</Text>
         </Pressable>
       </View>
-      <Text style={styles.sub}>
-        {stats.total.toLocaleString()} all time · {stats.sheets} {stats.sheets === 1 ? 'sheet' : 'sheets'} cleared
-      </Text>
+      <Pressable
+        onPress={() => {
+          haptic.tap();
+          setStatsOpen(true);
+        }}
+        style={styles.statsLine}
+        accessibilityRole="button"
+        accessibilityHint="Opens your stats"
+        hitSlop={6}
+      >
+        <Text style={styles.sub}>
+          {stats.total.toLocaleString()} all time · {stats.sheets} {stats.sheets === 1 ? 'sheet' : 'sheets'} cleared ›
+        </Text>
+      </Pressable>
 
       {/* the whole middle of the screen, edge to edge, listens for fingers,
           so a swipe that starts in the margin still pops bubbles */}
@@ -347,85 +356,196 @@ function BubbleWrap() {
       >
         <View style={styles.sheetWrap} pointerEvents="box-none">
           <Animated.View style={[styles.sheet, sheetStyle]}>
-            <View ref={sheetRef} style={styles.bubbleArea} onLayout={onLayout}>
+            <View
+              ref={sheetRef}
+              style={styles.bubbleArea}
+              onLayout={onLayout}
+              accessible
+              accessibilityLabel={`Bubble wrap sheet, ${left} bubbles left. Tap or drag to pop.`}
+            >
               {grid &&
                 states.current.length === grid.cells.length &&
                 grid.cells.map((c, i) => (
-                  <Bubble key={`${sheetId}-${i}`} x={c.x} y={c.y} size={grid.size} state={states.current[i]} />
+                  <Bubble
+                    key={`${sheetId}-${i}`}
+                    x={c.x}
+                    y={c.y}
+                    size={grid.size}
+                    state={states.current[i]}
+                    tiltX={tilt.x}
+                    tiltY={tilt.y}
+                    reduce={reduce}
+                  />
                 ))}
+              {tough && (
+                <Animated.View
+                  pointerEvents="none"
+                  entering={reduce ? FadeIn : ZoomIn.springify().damping(10)}
+                  exiting={FadeOut.duration(250)}
+                  style={[styles.tough, { left: tough.x - 44, top: tough.y - 52 }]}
+                >
+                  <Text style={styles.toughText}>Tough one.</Text>
+                </Animated.View>
+              )}
             </View>
+            {ready && !stats.seen.hint && today === 0 && !cleared && <Hint reduce={reduce} />}
             {cleared && (
-              <View pointerEvents="none" style={styles.clearedBadge}>
-                <Text style={styles.clearedText}>Sheet cleared!</Text>
+              <View pointerEvents="none" style={styles.centerWrap}>
+                <Animated.View
+                  entering={reduce ? FadeIn : ZoomIn.springify().damping(10)}
+                  style={[styles.pill, styles.badge]}
+                >
+                  <Text style={styles.badgeText}>Every last one.</Text>
+                </Animated.View>
               </View>
             )}
           </Animated.View>
         </View>
       </View>
 
-      <Animated.View style={pulseStyle}>
-        <PillButton label={cleared ? 'Grab a fresh sheet' : 'Fresh sheet'} onPress={freshSheet} textColor={BG} />
-      </Animated.View>
+      <View>
+        <Animated.View pointerEvents="none" style={[styles.halo, haloStyle]} />
+        <Animated.View style={pulseStyle}>
+          <Pressable
+            onPress={newSheet}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.button, pressed && { transform: [{ scale: 0.97 }] }]}
+          >
+            <Text style={styles.buttonText}>{cleared ? 'Another sheet' : 'New sheet'}</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+
+      <StatsSheet
+        visible={statsOpen}
+        stats={stats}
+        reduce={reduce}
+        onClose={() => setStatsOpen(false)}
+        onChange={(p) => patch(p)}
+        onReset={() => {
+          haptic.medium();
+          setStats({ ...statsRef.current, days: {}, total: 0, sheets: 0 });
+        }}
+      />
     </View>
   );
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black });
   return (
     <SafeAreaProvider>
-      <BubbleWrap />
+      {fontsLoaded ? <BubbleWrap /> : <View style={{ flex: 1, backgroundColor: C.ground }} />}
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG, paddingHorizontal: 16 },
+  root: { flex: 1, backgroundColor: C.ground, paddingHorizontal: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  kicker: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
-  count: { color: '#fff', fontSize: 52, fontWeight: '900', letterSpacing: -1.5, marginTop: -2 },
-  sub: { color: 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: '600', marginBottom: 14 },
-  mute: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    marginBottom: 12,
+  kicker: { fontFamily: F.xbold, color: '#FFFFFF', fontSize: 12, letterSpacing: 1.6 },
+  count: {
+    fontFamily: F.black,
+    color: '#FFFFFF',
+    fontSize: 56,
+    letterSpacing: -1.5,
+    lineHeight: 64,
+    alignSelf: 'flex-start',
   },
-  muteText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  chip: {
+    height: 44,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginBottom: 10,
+  },
+  chipText: { fontFamily: F.xbold, color: '#FFFFFF', fontSize: 14 },
+  statsLine: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center', marginBottom: 12 },
+  sub: { fontFamily: F.bold, color: '#FFFFFF', fontSize: 15 },
   touchZone: { flex: 1, marginHorizontal: -16, paddingHorizontal: 16, paddingBottom: 16 },
-  sheetWrap: { flex: 1, overflow: 'hidden', borderRadius: 28 },
+  sheetWrap: { flex: 1, borderRadius: 28, overflow: 'hidden' },
   sheet: {
     flex: 1,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.45)',
+    borderColor: 'rgba(255,255,255,0.42)',
+    transformOrigin: 'center bottom',
   },
   bubbleArea: { position: 'absolute', top: 12, left: 12, right: 12, bottom: 12 },
-  cell: { position: 'absolute' },
-  dome: {
-    backgroundColor: 'rgba(255,255,255,0.32)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.9)',
-    overflow: 'hidden',
+  centerWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  shade: { position: 'absolute', backgroundColor: 'rgba(60,30,150,0.14)' },
-  shine: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.95)', transform: [{ rotate: '-35deg' }] },
-  flat: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
+  pill: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    shadowColor: '#140A50',
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
-  crinkle: { position: 'absolute', height: 1, borderRadius: 1, backgroundColor: '#fff' },
-  ring: { borderWidth: 2, borderColor: '#fff' },
-  clearedBadge: {
+  hintPill: { paddingHorizontal: 20, paddingVertical: 14 },
+  hintText: { fontFamily: F.xbold, color: C.ground, fontSize: 16 },
+  badge: { paddingHorizontal: 24, paddingVertical: 14 },
+  badgeText: { fontFamily: F.black, color: C.ground, fontSize: 22 },
+  tough: {
+    position: 'absolute',
+    width: 88,
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    transform: [{ rotate: '-6deg' }],
+  },
+  toughText: { fontFamily: F.black, color: C.ground, fontSize: 14 },
+  toast: {
     position: 'absolute',
     alignSelf: 'center',
-    top: '42%',
-    backgroundColor: '#fff',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 999,
+    backgroundColor: C.ink,
+    shadowColor: '#0A0528',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-  clearedText: { color: BG, fontWeight: '900', fontSize: 20 },
+  toastStar: { color: C.star, fontSize: 14 },
+  toastText: { fontFamily: F.xbold, color: '#FFFFFF', fontSize: 14 },
+  halo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  button: {
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#140A50',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  buttonText: { fontFamily: F.black, color: C.ground, fontSize: 18 },
 });

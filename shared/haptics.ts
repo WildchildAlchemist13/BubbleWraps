@@ -1,9 +1,10 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
-const on = Platform.OS !== 'web';
+const supported = Platform.OS !== 'web';
+let enabled = true;
 const safe = (fn: () => Promise<unknown>) => {
-  if (!on) return;
+  if (!supported || !enabled) return;
   fn().catch(() => {});
 };
 
@@ -15,4 +16,8 @@ export const haptic = {
   heavy: () => safe(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)),
   rigid: () => safe(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)),
   success: () => safe(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
+  /** Respect an in-app "Vibration" setting. */
+  setEnabled: (on: boolean) => {
+    enabled = on;
+  },
 };

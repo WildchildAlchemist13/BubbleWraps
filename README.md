@@ -47,6 +47,11 @@ Ads are non-personalized and rated G. Google's consent form appears where the la
 **Remove ads**: a one-time purchase through RevenueCat. Offered in the stats sheet, and as a small button on the
 "Every last one." screen once someone has seen at least one ad. "Restore purchase" is in the stats sheet.
 
+**Off in v1**: app.json does not run the `react-native-google-mobile-ads` config plugin, so the app ships
+without `NSUserTrackingUsageDescription` and there is nothing to declare as tracking at App Review. The JS
+dependency is still compiled in but the ad SDK is never initialised (`ADS_PLUGIN_ENABLED` in
+`src/monetize.native.ts`). See "Going live" to turn it back on.
+
 **Where it runs**: ads and purchases need a *development build*. They're switched off in Expo Go and on web,
 so the app still runs there. In development, "Remove ads" offers a test-mode "Pretend I bought it" when the
 store isn't set up.
@@ -63,8 +68,11 @@ testing, temporarily set `graceDays`/`sheetsBetweenAds` lower in `src/adRules.ts
 
 ### Going live
 
-1. AdMob: create the app and an interstitial ad unit for iOS and Android. Put the **app IDs** in `app.json`
-   (replacing Google's test IDs) and the **ad unit IDs** in `.env` (see `.env.example`).
+1. AdMob: add the `react-native-google-mobile-ads` plugin back to the `plugins` array in `app.json` with
+   your **app IDs**, its `userTrackingUsageDescription`, and `"delayAppMeasurementInit": true` — it was
+   removed for build 5 because that option injects `NSUserTrackingUsageDescription`, and an app that carries
+   the key must declare tracking. Then set `ADS_PLUGIN_ENABLED = true` in `src/monetize.native.ts`, and put
+   the **ad unit IDs** in `.env` (see `.env.example`).
 2. RevenueCat: create a project, a non-consumable product `popsheet_remove_ads` in App Store Connect and
    Google Play, and an entitlement `remove_ads` that includes it. Put the public SDK keys in `.env`.
 3. Change `ios.bundleIdentifier` / `android.package` in `app.json` if you want your own (currently

@@ -23,6 +23,11 @@ if (!inExpoGo) {
   }
 }
 
+// Off on purpose: app.json no longer runs the react-native-google-mobile-ads config plugin, so no
+// GADApplicationIdentifier is injected. Turning ads on means adding that plugin back (README,
+// "Going live") — until then, never touch the ad SDK, so it can't read an ad ID or show a prompt.
+const ADS_PLUGIN_ENABLED: boolean = false;
+
 // Real ad unit IDs come from env vars; development builds always use Google's test ads.
 const realUnit = Platform.select({
   ios: process.env.EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS,
@@ -52,7 +57,7 @@ function loadNext() {
 }
 
 export const monetize: Monetize = {
-  adsAvailable: !!ads && (__DEV__ || !!realUnit),
+  adsAvailable: ADS_PLUGIN_ENABLED && !!ads && (__DEV__ || !!realUnit),
   storeAvailable: !!Purchases && !!rcKey,
 
   async init() {
@@ -60,7 +65,7 @@ export const monetize: Monetize = {
     started = true;
     // Store builds without a real ad unit don't start the ad SDK at all:
     // no consent form, no ad requests, nothing collected.
-    if (ads && (__DEV__ || realUnit)) {
+    if (ADS_PLUGIN_ENABLED && ads && (__DEV__ || realUnit)) {
       try {
         // GDPR / privacy consent where the law requires it (Google's own form)
         const consent = await ads.AdsConsent.gatherConsent();
@@ -87,7 +92,7 @@ export const monetize: Monetize = {
   },
 
   async privacyOptionsRequired() {
-    if (!ads || !started || !(__DEV__ || realUnit)) return false;
+    if (!ADS_PLUGIN_ENABLED || !ads || !started || !(__DEV__ || realUnit)) return false;
     try {
       const info = await ads.AdsConsent.getConsentInfo();
       return info.privacyOptionsRequirementStatus === ads.AdsConsentPrivacyOptionsRequirementStatus.REQUIRED;

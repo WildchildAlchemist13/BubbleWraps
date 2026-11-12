@@ -3,16 +3,18 @@
 Everything App Store Connect asks for, ready to paste. v1 ships **without ads or purchases**
 (AdMob only approves apps that are already live). Ads + "Remove ads" come in an update.
 
-## Fill these in first
+## Support and privacy URLs
 
-| Placeholder | Where |
+The pages are filled in and published:
+
+| Field | Value |
 |---|---|
-| `[YOUR CONTACT EMAIL]` | `docs/pop-sheet/privacy.html`, `docs/pop-sheet/index.html` |
-| `[DEVELOPER NAME]` | `docs/pop-sheet/privacy.html` (your name or the seller name on your Apple account) |
-| `[PUBLISH DATE]` | `docs/pop-sheet/privacy.html` |
+| Support email | `indiewrittechnology@gmail.com` |
+| Published by (developer/seller name) | Wildchild Alchemist |
+| Policy effective date | November 12, 2026 |
 
-Then turn on GitHub Pages: repo **Settings → Pages → Build and deployment → Deploy from a branch →
-`main` / `/docs` → Save**. A minute later these are live:
+GitHub Pages serves them from **Settings → Pages → Deploy from a branch → `main` / `/docs`**.
+Both are live:
 
 - Support URL: `https://wildchildalchemist13.github.io/BubbleWraps/pop-sheet/`
 - Privacy Policy URL: `https://wildchildalchemist13.github.io/BubbleWraps/pop-sheet/privacy.html`
@@ -26,7 +28,7 @@ Then turn on GitHub Pages: repo **Settings → Pages → Build and deployment �
 | **Category** | Primary: Entertainment · Secondary: Lifestyle | |
 | **Age rating** | 4+ (answer "None" to every content question) | |
 | **Price** | Free | |
-| **Copyright** | 2026 [DEVELOPER NAME] | |
+| **Copyright** | 2026 Wildchild Alchemist | |
 
 **Promotional text** (170, can change any time without review)
 > A fresh sheet of bubbles whenever you need a minute. Tap one, or drag a finger across a whole row and hear them go.
@@ -68,7 +70,10 @@ Apple scales them down for smaller iPhones. To redo them: `store/screenshots/fra
 ## App Privacy (the "nutrition label")
 
 v1: **Data Not Collected.** Answer "No, we do not collect data from this app."
-(Counts live only on the phone; the ad SDK never starts without real ad IDs; no purchases yet.)
+(Counts live only on the phone; no ad or purchase SDK runs; no purchases yet.)
+
+The published policy describes ads and the "Remove ads" purchase as future features only, which
+matches this answer. Update both the policy and this label in the same release that adds them.
 
 When ads + Remove ads ship, change it to: Identifiers → Device ID; Usage Data → Advertising Data,
 Product Interaction; Diagnostics; Purchases → Purchase History. Linked to user: No. Used for tracking: No.

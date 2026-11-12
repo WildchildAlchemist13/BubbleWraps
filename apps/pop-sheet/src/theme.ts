@@ -1,4 +1,4 @@
-// Bubble Wrap's look, from the design canvas (style guide board).
+// Pop Sheet's look, from the design canvas (style guide board).
 export const C = {
   ground: '#5B4BE0', // white text 5.6:1
   surface: '#FFFFFF',

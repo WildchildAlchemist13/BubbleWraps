@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Bubble Wrap",
-    "slug": "bubble-wrap",
+    "name": "Pop Sheet",
+    "slug": "pop-sheet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.wildchildalchemist.bubblewrap",
+      "bundleIdentifier": "com.wildchildalchemist.popsheet",
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -21,7 +21,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.wildchildalchemist.bubblewrap"
+      "package": "com.wildchildalchemist.popsheet"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,7 +35,7 @@
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
           "delayAppMeasurementInit": true,
-          "userTrackingUsageDescription": "This keeps ads relevant only if you allow it. Bubble Wrap shows non-personalized ads either way."
+          "userTrackingUsageDescription": "This keeps ads relevant only if you allow it. Pop Sheet shows non-personalized ads either way."
         }
       ],
       "expo-dev-client"

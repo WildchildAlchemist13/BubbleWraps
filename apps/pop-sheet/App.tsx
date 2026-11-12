@@ -131,7 +131,7 @@ function Hint({ reduce }: { reduce: boolean }) {
   );
 }
 
-function BubbleWrap() {
+function PopSheet() {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const [stats, setStatsRaw, ready] = useStoredState<Stats>('bubble:stats', INITIAL);
@@ -203,7 +203,7 @@ function BubbleWrap() {
     if (result === 'bought') {
       patch({ adFree: true });
       haptic.success();
-      tell('Ads removed', 'Thanks for supporting Bubble Wrap. Pop in peace.');
+      tell('Ads removed', 'Thanks for supporting Pop Sheet. Pop in peace.');
     } else if (result === 'unavailable') {
       if (__DEV__) {
         // purchases aren't set up yet: let the developer feel the ad-free version
@@ -465,7 +465,7 @@ function BubbleWrap() {
               style={styles.bubbleArea}
               onLayout={onLayout}
               accessible
-              accessibilityLabel={`Bubble wrap sheet, ${left} bubbles left. Tap or drag to pop.`}
+              accessibilityLabel={`Bubble sheet, ${left} bubbles left. Tap or drag to pop.`}
             >
               {grid &&
                 states.current.length === grid.cells.length &&
@@ -555,7 +555,7 @@ export default function App() {
   const [fontsLoaded] = useFonts({ Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black });
   return (
     <SafeAreaProvider>
-      {fontsLoaded ? <BubbleWrap /> : <View style={{ flex: 1, backgroundColor: C.ground }} />}
+      {fontsLoaded ? <PopSheet /> : <View style={{ flex: 1, backgroundColor: C.ground }} />}
     </SafeAreaProvider>
   );
 }

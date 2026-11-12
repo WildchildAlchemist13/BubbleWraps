@@ -1,9 +1,9 @@
-# Build Bubble Wrap in Expo's cloud (EAS) and optionally send it to the stores.
-# Run it from GitHub: Actions → "Bubble Wrap: build & submit" → Run workflow.
+# Build Pop Sheet in Expo's cloud (EAS) and optionally send it to the stores.
+# Run it from GitHub: Actions → "Pop Sheet: build & submit" → Run workflow.
 # Needs one repository secret: EXPO_TOKEN (expo.dev → Account settings → Access tokens).
 # Real ad/purchase keys live in EAS environment variables (expo.dev → project → Environment variables),
 # because the build runs on Expo's servers. Without them the store build simply shows no ads.
-name: "Bubble Wrap: build & submit"
+name: "Pop Sheet: build & submit"
 
 on:
   workflow_dispatch:
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/bubble-wrap
+        working-directory: apps/pop-sheet
     steps:
       - uses: actions/checkout@v4
 

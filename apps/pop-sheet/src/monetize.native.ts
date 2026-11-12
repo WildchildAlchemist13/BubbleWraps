@@ -58,7 +58,9 @@ export const monetize: Monetize = {
   async init() {
     if (started) return;
     started = true;
-    if (ads) {
+    // Store builds without a real ad unit don't start the ad SDK at all:
+    // no consent form, no ad requests, nothing collected.
+    if (ads && (__DEV__ || realUnit)) {
       try {
         // GDPR / privacy consent where the law requires it (Google's own form)
         const consent = await ads.AdsConsent.gatherConsent();
@@ -85,7 +87,7 @@ export const monetize: Monetize = {
   },
 
   async privacyOptionsRequired() {
-    if (!ads) return false;
+    if (!ads || !started || !(__DEV__ || realUnit)) return false;
     try {
       const info = await ads.AdsConsent.getConsentInfo();
       return info.privacyOptionsRequirementStatus === ads.AdsConsentPrivacyOptionsRequirementStatus.REQUIRED;

@@ -25,4 +25,4 @@ export type Monetize = {
 
 /** RevenueCat names. Create these in the RevenueCat dashboard and both stores. */
 export const REMOVE_ADS_ENTITLEMENT = 'remove_ads';
-export const REMOVE_ADS_PRODUCT = 'bubblewrap_remove_ads';
+export const REMOVE_ADS_PRODUCT = 'popsheet_remove_ads';

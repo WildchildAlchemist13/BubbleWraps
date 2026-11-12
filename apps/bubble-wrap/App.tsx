@@ -190,11 +190,13 @@ function BubbleWrap() {
         const owned = await monetize.removeAds.isOwned();
         if (owned !== null && owned !== statsRef.current.adFree) patch({ adFree: owned });
         setRemoveAdsPrice(await monetize.removeAds.price());
+        setPrivacyRequired(await monetize.privacyOptionsRequired());
       })
       .catch(() => {});
   }, [ready]);
 
   const [removeAdsPrice, setRemoveAdsPrice] = useState<string | null>(null);
+  const [privacyRequired, setPrivacyRequired] = useState(false);
   const buyRemoveAds = async () => {
     haptic.tap();
     const result = await monetize.removeAds.buy();
@@ -539,6 +541,7 @@ function BubbleWrap() {
           buy: buyRemoveAds,
           restore: restoreRemoveAds,
         }}
+        privacyChoices={privacyRequired ? () => monetize.showPrivacyOptions() : undefined}
         onReset={() => {
           haptic.medium();
           setStats({ ...statsRef.current, days: {}, total: 0, sheets: 0 });

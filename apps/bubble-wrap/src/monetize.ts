@@ -5,6 +5,8 @@ export const monetize: Monetize = {
   adsAvailable: false,
   storeAvailable: false,
   init: async () => {},
+  privacyOptionsRequired: async () => false,
+  showPrivacyOptions: async () => {},
   showInterstitial: async () => false,
   removeAds: {
     price: async () => null,

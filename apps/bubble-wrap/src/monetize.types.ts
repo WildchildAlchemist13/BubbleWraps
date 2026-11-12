@@ -7,6 +7,10 @@ export type Monetize = {
   storeAvailable: boolean;
   /** Ask for consent where required, start the ad SDK, preload an ad, set up the store. Safe to call once. */
   init(): Promise<void>;
+  /** true where privacy law requires a way to revisit ad consent (e.g. EEA/UK) */
+  privacyOptionsRequired(): Promise<boolean>;
+  /** Google's consent form, so the user can change their choice */
+  showPrivacyOptions(): Promise<void>;
   /** Show the preloaded interstitial. Resolves when it closes: true if one was shown. */
   showInterstitial(): Promise<boolean>;
   removeAds: {

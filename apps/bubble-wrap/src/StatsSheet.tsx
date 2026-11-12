@@ -13,6 +13,8 @@ type Props = {
   onReset: () => void;
   reduce: boolean;
   removeAds: { show: boolean; owned: boolean; price: string | null; buy: () => void; restore: () => void };
+  /** shown only where privacy law requires it */
+  privacyChoices?: () => void;
 };
 
 function confirmReset(onReset: () => void) {
@@ -28,7 +30,7 @@ function confirmReset(onReset: () => void) {
   ]);
 }
 
-export function StatsSheet({ visible, stats, onClose, onChange, onReset, reduce, removeAds }: Props) {
+export function StatsSheet({ visible, stats, onClose, onChange, onReset, reduce, removeAds, privacyChoices }: Props) {
   const insets = useSafeAreaInsets();
   const week = lastWeek(stats);
   const max = Math.max(1, ...week.map((d) => d.value));
@@ -150,6 +152,14 @@ export function StatsSheet({ visible, stats, onClose, onChange, onReset, reduce,
                     </Pressable>
                   </>
                 )}
+              </View>
+            )}
+
+            {privacyChoices && (
+              <View style={styles.list}>
+                <Pressable onPress={privacyChoices} style={styles.row} accessibilityRole="button">
+                  <Text style={[styles.rowLabel, { flex: 1, color: C.ground }]}>Privacy choices</Text>
+                </Pressable>
               </View>
             )}
 

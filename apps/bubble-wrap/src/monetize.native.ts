@@ -41,7 +41,9 @@ let storeReady = false;
 
 function loadNext() {
   if (!ads || !canRequestAds) return;
-  const unit = __DEV__ || !realUnit ? ads.TestIds.INTERSTITIAL : realUnit;
+  // dev builds: Google's test ads. Store builds: only your real ad unit, never test ads.
+  const unit = __DEV__ ? ads.TestIds.INTERSTITIAL : realUnit;
+  if (!unit) return;
   interstitial = ads.InterstitialAd.createForAdRequest(unit, { requestNonPersonalizedAdsOnly: true });
   loaded = false;
   interstitial.addAdEventListener(ads.AdEventType.LOADED, () => (loaded = true));
@@ -50,7 +52,7 @@ function loadNext() {
 }
 
 export const monetize: Monetize = {
-  adsAvailable: !!ads,
+  adsAvailable: !!ads && (__DEV__ || !!realUnit),
   storeAvailable: !!Purchases && !!rcKey,
 
   async init() {
@@ -79,6 +81,26 @@ export const monetize: Monetize = {
       } catch {
         storeReady = false;
       }
+    }
+  },
+
+  async privacyOptionsRequired() {
+    if (!ads) return false;
+    try {
+      const info = await ads.AdsConsent.getConsentInfo();
+      return info.privacyOptionsRequirementStatus === ads.AdsConsentPrivacyOptionsRequirementStatus.REQUIRED;
+    } catch {
+      return false;
+    }
+  },
+
+  async showPrivacyOptions() {
+    if (!ads) return;
+    try {
+      const info = await ads.AdsConsent.showPrivacyOptionsForm();
+      canRequestAds = info.canRequestAds;
+    } catch {
+      // form unavailable: keep the current choice
     }
   },
 

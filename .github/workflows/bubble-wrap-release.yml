@@ -1,0 +1,55 @@
+# Build Bubble Wrap in Expo's cloud (EAS) and optionally send it to the stores.
+# Run it from GitHub: Actions → "Bubble Wrap: build & submit" → Run workflow.
+# Needs one repository secret: EXPO_TOKEN (expo.dev → Account settings → Access tokens).
+# Real ad/purchase keys live in EAS environment variables (expo.dev → project → Environment variables),
+# because the build runs on Expo's servers. Without them the store build simply shows no ads.
+name: "Bubble Wrap: build & submit"
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Which store
+        type: choice
+        options: [android, ios, all]
+        default: android
+      profile:
+        description: production = store build · preview = installable test build
+        type: choice
+        options: [production, preview, development]
+        default: production
+      submit:
+        description: Send a production build straight to the store (Android goes to Internal testing as a draft)
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/bubble-wrap
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        working-directory: .
+        run: npm ci
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: >
+          eas build --platform ${{ inputs.platform }} --profile ${{ inputs.profile }}
+          --non-interactive ${{ inputs.submit && inputs.profile == 'production' && '--auto-submit' || '--no-wait' }}

@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:transparent}
+.c{position:relative;width:1024px;height:1024px;overflow:hidden}
+.bg{position:absolute;inset:0;background:#5B4BE0}
+.g{position:absolute;left:0;top:0;width:1024px;height:1024px}
+.b{position:absolute;border-radius:50%;box-sizing:border-box;overflow:hidden;background:rgba(255,255,255,.30);border:16px solid rgba(255,255,255,.95);box-shadow:0 18px 30px rgba(20,10,80,.25)}
+.b .sh{position:absolute;border-radius:50%;right:6%;bottom:6%;width:80%;height:80%;background:rgba(40,20,140,.18)}
+.b .s1{position:absolute;left:17%;top:20%;width:35%;height:18%;border-radius:999px;background:#fff;transform:rotate(-35deg)}
+.b .s2{position:absolute;left:60%;top:15%;width:10%;height:10%;border-radius:50%;background:#fff;opacity:.9}
+.p{position:absolute;border-radius:50%;box-sizing:border-box;background:rgba(255,255,255,.10);border:10px solid rgba(255,255,255,.55);transform:scale(.88)}
+.p i{position:absolute;height:9px;border-radius:9px;background:#fff;opacity:.7}
+.mono .b,.mono .p{background:transparent;box-shadow:none;border-color:#fff}
+.mono .sh{display:none}
+.mono .p i{opacity:1}
+</style></head><body>
+<div class="c" id="root"><div class="bg" id="bg"></div><div class="g" id="g">
+  <div class="b" style="left:VAR_AXpx;top:VAR_AYpx;width:VAR_ADpx;height:VAR_ADpx"><span class="sh"></span><span class="s1"></span><span class="s2"></span></div>
+  <div class="p" style="left:VAR_BXpx;top:VAR_BYpx;width:VAR_BDpx;height:VAR_BDpx">
+    <i style="left:18%;top:40%;width:40%;transform:rotate(18deg)"></i>
+    <i style="left:46%;top:30%;width:28%;transform:rotate(-64deg)"></i>
+    <i style="left:34%;top:64%;width:36%;transform:rotate(-8deg)"></i>
+  </div>
+  <div class="b" style="left:VAR_CXpx;top:VAR_CYpx;width:VAR_CDpx;height:VAR_CDpx"><span class="sh"></span><span class="s1"></span><span class="s2"></span></div>
+</div></div>
+<script>
+const q=new URLSearchParams(location.search); const k=Number(q.get('scale')||1);
+// big intact bubble lower-left, popped bubble upper-right, small intact bubble lower-right
+const c=512, place=(dx,dy,d)=>({x:c+(dx-d/2)*k, y:c+(dy-d/2)*k, d:d*k});
+const A=place(-92,58,540), B=place(214,-214,330), C=place(250,232,250);
+let h=document.body.innerHTML;
+for (const [n,o] of [['A',A],['B',B],['C',C]]) h=h.replaceAll('VAR_'+n+'X',o.x).replaceAll('VAR_'+n+'Y',o.y).replaceAll('VAR_'+n+'D',o.d);
+document.body.innerHTML=h;
+if(q.get('bg')==='0') document.getElementById('bg').remove();
+if(q.get('mono')==='1') document.getElementById('root').classList.add('mono');
+</script></body></html>
